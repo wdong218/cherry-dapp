@@ -29,7 +29,7 @@ public class ApiController {
     @Value("${cherry.token.address:}")
     private String cherryToken;
 
-    @Value("${simple.wallet.address:0x05eb5def5fd6897cdab55e039b9a874faf908ae2}")
+    @Value("${simple.wallet.address:0x428dc0f4f806054CE70b26F1bB6a186317644123}")
     private String simpleWallet;
 
     /* ---- 네트워크 ---- */

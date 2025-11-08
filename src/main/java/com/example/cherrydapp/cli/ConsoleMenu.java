@@ -65,11 +65,16 @@ public class ConsoleMenu implements CommandLineRunner {
         System.out.println("--------------------------------");
     }
 
-    private void actionT31State() throws Exception {
+    private void actionT31State() {
         String c = ask("T31 컨트랙트 주소: ");
-        BigInteger round = evm.t31CurrentRound(c);
-        BigInteger pot   = evm.t31Pot(c);
-        System.out.println("round=" + round + ", potRaw=" + pot);
+        try {
+            BigInteger round = evm.t31CurrentRound(c);
+            BigInteger pot   = evm.t31PotSmart(c); // ← 안전한 버전으로 변경
+            System.out.println("round=" + round + ", potRaw=" + pot);
+        } catch (Exception e) {
+            System.out.println("[에러] 조회 실패: " + e.getMessage());
+            System.out.println("round=0, potRaw=0");
+        }
     }
 
     private void actionT31Submit() throws Exception {

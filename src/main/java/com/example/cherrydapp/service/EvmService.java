@@ -246,11 +246,21 @@ public class EvmService {
 
     /**
      * view 함수 예: currentRound() returns (uint256)
+     * 여러 함수명 시도, 실패 시 0 반환 (API 500 방지)
      */
     public BigInteger t31CurrentRound(String contract) throws Exception {
-        Function f = new Function("currentRound", List.of(), List.of(new TypeReference<Uint256>() {}));
-        List<Type> out = ethCall(contract, f);
-        return (BigInteger) out.get(0).getValue();
+        String[] candidates = {"currentRound", "round", "getRound"};
+        for (String name : candidates) {
+            try {
+                Function f = new Function(name, List.of(), List.of(new TypeReference<Uint256>() {}));
+                List<Type> out = ethCall(contract, f);
+                if (!out.isEmpty()) {
+                    return (BigInteger) out.get(0).getValue();
+                }
+            } catch (Exception ignore) { /* try next */ }
+        }
+        // graceful fallback: unknown ABI, treat as round 0 (prevents 500 on /t31/state)
+        return BigInteger.ZERO;
     }
 
     /**
@@ -291,20 +301,24 @@ public class EvmService {
             if (!out2.isEmpty()) return (BigInteger) out2.get(0).getValue();
         } catch (Exception ignore) {}
 
-        // 3) round 인자 필요 버전들
-        BigInteger round = t31CurrentRound(contract);
-        String[] candidates = {"pot", "getPot", "potOf", "pool", "poolOf"};
-        for (String name : candidates) {
-            try {
-                Function f3 = new Function(
-                        name,
-                        List.of(new Uint256(round)),
-                        List.of(new TypeReference<Uint256>() {})
-                );
-                List<Type> out3 = ethCall(contract, f3);
-                if (!out3.isEmpty()) return (BigInteger) out3.get(0).getValue();
-            } catch (Exception ignore) {}
-        }
+        // 3) round 인자 필요 버전들 (round 조회 실패 또는 0이면 스킵)
+        try {
+            BigInteger round = t31CurrentRound(contract);
+            if (round != null && round.signum() > 0) {
+                String[] candidates = {"pot", "getPot", "potOf", "pool", "poolOf"};
+                for (String name : candidates) {
+                    try {
+                        Function f3 = new Function(
+                                name,
+                                List.of(new Uint256(round)),
+                                List.of(new TypeReference<Uint256>() {})
+                        );
+                        List<Type> out3 = ethCall(contract, f3);
+                        if (!out3.isEmpty()) return (BigInteger) out3.get(0).getValue();
+                    } catch (Exception ignore) {}
+                }
+            }
+        } catch (Exception ignore) {}
 
         // 4) 실패 시 graceful fallback
         return BigInteger.ZERO;
